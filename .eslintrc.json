@@ -1,0 +1,67 @@
+{
+	"env": {
+		"es6": true,
+		"node": true
+	},
+	"extends": [
+		"eslint:recommended",
+		"plugin:@typescript-eslint/eslint-recommended",
+		"plugin:import/errors",
+		"plugin:import/warnings",
+		"plugin:import/typescript",
+		"plugin:unicorn/recommended",
+		"prettier",
+		"prettier/unicorn",
+		"prettier/@typescript-eslint",
+		"plugin:prettier/recommended"
+	],
+	"globals": {
+		"Atomics": "readonly",
+		"SharedArrayBuffer": "readonly"
+	},
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"ecmaVersion": 2018,
+		"sourceType": "module"
+	},
+	"plugins": ["@typescript-eslint", "prettier", "unicorn", "fp"],
+	"rules": {
+		"no-console": 2,
+		"indent": ["error", "tab"],
+		"linebreak-style": ["error", "unix"],
+		"quotes": ["error", "single"],
+		"semi": ["error", "always"],
+		"fp/no-arguments": "error",
+		"fp/no-class": "error",
+		"fp/no-delete": "error",
+		"fp/no-events": "error",
+		"fp/no-get-set": "error",
+		"fp/no-let": "error",
+		"fp/no-loops": "error",
+		"fp/no-mutating-assign": "error",
+		"fp/no-mutating-methods": "error",
+		"fp/no-mutation": ["error", { "commonjs": true }],
+		// "fp/no-nil": "error",
+		"fp/no-proxy": "error",
+		"fp/no-this": "error",
+		// "fp/no-throw": "error",
+		"fp/no-valueof-field": "error",
+		"no-var": "error",
+
+		"unicorn/prevent-abbreviations": 0,
+		"unicorn/no-null": 0,
+		"no-tabs": ["error", { "allowIndentationTabs": true }],
+		"func-style": ["error", "declaration", { "allowArrowFunctions": true }],
+		"prefer-arrow-callback": ["error", { "allowNamedFunctions": false }], // arrow fn in callback
+		"arrow-body-style": ["error", "as-needed"], // brackets in arrow fn just when necessary
+		"yoda": ["error", "never", { "exceptRange": true }]
+	},
+	"overrides": [
+		{
+			"files": ["*.ts"],
+			"rules": {
+				"@typescript-eslint/no-unused-vars": [2, { "args": "none" }]
+			}
+		}
+	]
+}
