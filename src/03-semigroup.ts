@@ -106,7 +106,7 @@ function of<A>(a: A): Array<A> {
 // if we already have an Ord instance for A, then we can "turn it" into a semigroup.
 // Actually two possible semigroups
 import { ordNumber, ordString } from 'fp-ts/lib/Ord';
-import { getMeetSemigroup, getJoinSemigroup } from 'fp-ts/lib/Semigroup';
+import { getMeetSemigroup, getJoinSemigroup, getStructSemigroup, semigroupAny } from 'fp-ts/lib/Semigroup';
 
 /** Takes the minimum of two values */
 const semigroupMin: Semigroup<number> = getMeetSemigroup(ordNumber);
@@ -147,7 +147,7 @@ logger.info('semigroupPoint.concat(p1, p2): ', semigroupPoint.concat(p1, p2));
 // we can build a Semigroup instance for a struct like Point if we
 // can provide a Semigroup instance for each field.
 // Indeed the fp-ts/lib/Semigroup module exports a getStructSemigroup combinator:
-import { getStructSemigroup } from 'fp-ts/lib/Semigroup';
+// import { getStructSemigroup } from 'fp-ts/lib/Semigroup';
 
 // This is the same as semigroupPoint declared previously
 const semigroupPointB: Semigroup<Point> = getStructSemigroup({
@@ -172,3 +172,140 @@ const semigroupVector: Semigroup<Vector> = getStructSemigroup({
 });
 
 logger.info('semigroupVector.concat(v1, v2): ', semigroupVector.concat(v1, v2));
+
+// here's a combinator that allows to derive a Semigroup instance for functions:
+// given an instance of Semigroup for S we can derive an instance of Semigroup for
+// functions with signature (a: A) => S, for all A
+import { getFunctionSemigroup, Semigroup as SG, semigroupAll } from 'fp-ts/lib/Semigroup';
+
+/** `semigroupAll` is the boolean semigroup under conjunction */
+const semigroupPredicate: SG<(p: Point) => boolean> = getFunctionSemigroup(semigroupAll)<Point>();
+
+// Now we can "merge" two predicates on Points
+
+const isPositiveX = (p: Point): boolean => p.x >= 0;
+const isPositiveY = (p: Point): boolean => p.y >= 0;
+
+const isPositiveXY = semigroupPredicate.concat(isPositiveX, isPositiveY);
+
+logger.info('isPositiveXY({ x: 1, y: 1 }): ', isPositiveXY({ x: 1, y: 1 })); // true
+logger.info('isPositiveXY({ x: 1, y: -1 }): ', isPositiveXY({ x: 1, y: -1 })); //false
+logger.info('isPositiveXY({ x: -1, y: 1 }): ', isPositiveXY({ x: -1, y: 1 })); //false
+logger.info('isPositiveXY({ x: -1, y: -1 }): ', isPositiveXY({ x: -1, y: -1 })); //false
+
+///////////////////////////////////////////////////////////
+///
+///            FOLDING
+///
+///////////////////////////////////////////////////////////
+
+// By definition concat works with only two elements of A, what if we want to concat more elements?
+// The fold function takes a semigroup instance, an initial value and an array of elements
+import { fold } from 'fp-ts/lib/Semigroup';
+
+const sum = fold(semigroupSum);
+
+logger.info('sum(0, [1, 2, 3, 4]):', sum(0, [1, 2, 3, 4])); // 10
+
+const product = fold(semigroupProduct);
+
+logger.info('product(1, [1, 2, 3, 4]):', product(1, [1, 2, 3, 4])); // 24
+
+const concatStr = fold(semigroupString);
+
+logger.info('concatStr("hello", " ", "world"): ', concatStr('', ['hello', ' ', 'world']));
+
+///////////////////////////////////////////////////////////
+///
+///            SEMIGROUPS FOR TYPE CONSTRUCTORS
+///
+///////////////////////////////////////////////////////////
+
+/*
+    What if we want to "merge" two Option<A>? There are four cases:
+    |   x   |    y   |  concat(x,y)
+    | none  |  none  |  none
+    | some(a) | none | none
+    | none  | some(a)| none
+    | some(a)| some(b)| ??
+*/
+
+/*
+    We'd need something to "merge" two As.
+    That's what Semigroup does! We can require a semigroup instance for A and
+    then derive a semigroup instance for Option<A>. This is how the getApplySemigroup combinator works
+*/
+import { getApplySemigroup, some, none } from 'fp-ts/lib/Option';
+
+const S = getApplySemigroup(semigroupSum);
+
+logger.info('S.concat(some(1), none)', S.concat(some(1), none)); // none
+logger.info('S.concat(some(1), some(2))', S.concat(some(1), some(2))); //some(3)
+
+const Sprod = getApplySemigroup(semigroupProduct);
+
+logger.info('Sprod.concat(some(1), none)', Sprod.concat(some(1), none)); // none
+logger.info('Sprod.concat(some(1), some(2))', Sprod.concat(some(1), some(2))); //some(2)
+
+///////////////////////////////////////////////////////////
+///
+///            FINAL EXAMPLE
+///
+///////////////////////////////////////////////////////////
+/*
+    What if we have a customer record for whatever reason you might end up with
+    duplicate records for the same person. What we need is a merge strategy.
+    That's what semigroups are all about
+*/
+interface Customer {
+	name: string;
+	favouriteThings: Array<string>;
+	registeredAt: number; // since epoch
+	lastUpdatedAt: number; // since epoch
+	hasMadePurchase: boolean;
+}
+
+import { getMonoid } from 'fp-ts/lib/Array';
+import { contramap } from 'fp-ts/lib/Ord';
+
+const semigroupCustomer: Semigroup<Customer> = getStructSemigroup({
+	// keep the longer name
+	name: getJoinSemigroup(contramap((s: string) => s.length)(ordNumber)),
+	// accumulate things
+	favouriteThings: getMonoid<string>(), // <= getMonoid returns a Semigroup for `Array<string>` see later
+	// keep the least recent date
+	registeredAt: getMeetSemigroup(ordNumber),
+	// keep the most recent date
+	lastUpdatedAt: getJoinSemigroup(ordNumber),
+	// Boolean semigroup under disjunction
+	hasMadePurchase: semigroupAny,
+});
+
+logger.info(
+	'semigroupCustomer',
+	semigroupCustomer.concat(
+		{
+			name: 'Lean',
+			favouriteThings: ['food', 'code'],
+			registeredAt: new Date(2018, 1, 20).getTime(),
+			lastUpdatedAt: new Date(2018, 2, 18).getTime(),
+			hasMadePurchase: false,
+		},
+		{
+			name: 'Leandro',
+			favouriteThings: ['linux'],
+			registeredAt: new Date(2018, 1, 22).getTime(),
+			lastUpdatedAt: new Date(2018, 2, 9).getTime(),
+			hasMadePurchase: true,
+		}
+	)
+);
+/*
+    {
+        name: 'Leandro',
+        favouriteThings: [ 'food', 'code', 'linux' ],
+        registeredAt: 1519095600000,
+        lastUpdatedAt: 1521342000000,
+        hasMadePurchase: true
+    }
+*/
