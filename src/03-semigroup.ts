@@ -265,6 +265,30 @@ interface Customer {
 	hasMadePurchase: boolean;
 }
 
+const customer1 = {
+	name: 'Lean',
+	favouriteThings: ['food', 'code'],
+	registeredAt: new Date(2018, 1, 20).getTime(),
+	lastUpdatedAt: new Date(2018, 2, 18).getTime(),
+	hasMadePurchase: false,
+};
+
+const customer2 = {
+	name: 'Leandro',
+	favouriteThings: ['linux'],
+	registeredAt: new Date(2018, 1, 22).getTime(),
+	lastUpdatedAt: new Date(2018, 2, 9).getTime(),
+	hasMadePurchase: true,
+};
+
+const customer3 = {
+	name: 'Leandro I',
+	favouriteThings: ['chocolate'],
+	registeredAt: new Date(2019, 1, 22).getTime(),
+	lastUpdatedAt: new Date(2019, 2, 9).getTime(),
+	hasMadePurchase: true,
+};
+
 import { getMonoid } from 'fp-ts/lib/Array';
 import { contramap } from 'fp-ts/lib/Ord';
 
@@ -281,31 +305,26 @@ const semigroupCustomer: Semigroup<Customer> = getStructSemigroup({
 	hasMadePurchase: semigroupAny,
 });
 
-logger.info(
-	'semigroupCustomer',
-	semigroupCustomer.concat(
-		{
-			name: 'Lean',
-			favouriteThings: ['food', 'code'],
-			registeredAt: new Date(2018, 1, 20).getTime(),
-			lastUpdatedAt: new Date(2018, 2, 18).getTime(),
-			hasMadePurchase: false,
-		},
-		{
-			name: 'Leandro',
-			favouriteThings: ['linux'],
-			registeredAt: new Date(2018, 1, 22).getTime(),
-			lastUpdatedAt: new Date(2018, 2, 9).getTime(),
-			hasMadePurchase: true,
-		}
-	)
-);
+const foldCustomer = fold(semigroupCustomer);
+
+logger.info('semigroupCustomer', semigroupCustomer.concat(customer1, customer2));
 /*
     {
         name: 'Leandro',
         favouriteThings: [ 'food', 'code', 'linux' ],
         registeredAt: 1519095600000,
         lastUpdatedAt: 1521342000000,
+        hasMadePurchase: true
+    }
+*/
+
+logger.info('foldCustomer(customer1, [customer2, customer3]): ', foldCustomer(customer1, [customer2, customer3]));
+/*
+    {
+        name: 'Leandro I',
+        favouriteThings: [ 'food', 'code', 'linux', 'chocolate' ],
+        registeredAt: 1519095600000,
+        lastUpdatedAt: 1552100400000,
         hasMadePurchase: true
     }
 */
