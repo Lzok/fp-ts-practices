@@ -50,7 +50,7 @@
 //////////////////////////////
 
 import { Functor } from 'fp-ts/lib/Functor';
-import { HKT } from 'fp-ts/lib/HKT';
+import { HKT, Kind, URIS } from 'fp-ts/lib/HKT';
 
 // So let's introduce a new abstraction Apply that owns such a unpacking operation (named ap)
 interface Apply<F> extends Functor<F> {
@@ -136,11 +136,16 @@ const applicativeTask = {
 //      Lifting
 ///////////////////////////////////////
 
-// Given an instance of Apply for F we can now write liftA2
+import { Apply1 } from 'fp-ts/lib/Apply';
+import * as Array from 'fp-ts/lib/Array';
+import * as Task2 from 'fp-ts/lib/Task';
+import * as Option2 from 'fp-ts/lib/Option';
 type Curried2<B, C, D> = (b: B) => (c: C) => D;
-
-function liftA2<F>(F: Apply<F>): <B, C, D>(g: Curried2<B, C, D>) => Curried2<HKT<F, B>, HKT<F, C>, HKT<F, D>> {
+export function liftA2<F extends URIS>(
+	F: Apply1<F>
+): <B, C, D>(g: Curried2<B, C, D>) => Curried2<Kind<F, B>, Kind<F, C>, Kind<F, D>> {
 	return (g) => (fb) => (fc) => F.ap(F.map(fb, g), fc);
 }
-
-const f1 = (st: string) => (n: number) => st.length > n;
+const liftA2Array = liftA2(Array.array);
+const liftA2Task = liftA2(Task2.task);
+const liftA2Option = liftA2(Option2.option);
